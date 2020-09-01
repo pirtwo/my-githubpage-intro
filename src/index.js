@@ -28,7 +28,10 @@ function init() {
     app.loader.onProgress.add(p => {
         console.log(p);
     });
-    app.loader.add('tileset', './assets/sprites/tileset.json').load(setup);
+    app.loader
+        .add('music', './assets/sounds/music.mp3')
+        .add('tileset', './assets/sprites/tileset.json')
+        .load(setup);
 }
 
 function setup(loader, resources) {
@@ -36,9 +39,20 @@ function setup(loader, resources) {
     stats.showPanel(0);
     document.body.appendChild(stats.dom);
 
-    const tileset = resources.tileset.textures;
-    // const sounds = resourses.sounds.sound
+    let isMuted = false;
     let ctx = new PIXI.Graphics();
+    const tileset = resources.tileset.textures;
+    const music = resources.music.sound;
+
+    music.volume = 0.2;
+    music.loop = true;
+    music.play();
+    window.addEventListener("blur", () => {
+        music.pause();
+    });
+    window.addEventListener("focus", () => {
+        music.play();
+    });
 
     let sky = new PIXI.TilingSprite(tileset['sprite_16.png'], app.screen.width, app.screen.height);
 
@@ -146,17 +160,22 @@ function setup(loader, resources) {
     let soundBtn = new PIXI.Sprite(tileset['audioOn.png']);
     soundBtn.buttonMode = true;
     soundBtn.interactive = true;
-    soundBtn.on("pointertap", e => {
+    soundBtn.on("pointerdown", e => {
         if (isMuted) {
+            isMuted = false;
             Sound.unmuteAll();
-            soundBtn.texture = tileset['audioOff.png'];
-        } else {
-            Sound.muteAll();
             soundBtn.texture = tileset['audioOn.png'];
+        } else {
+            isMuted = true;
+            Sound.muteAll();
+            soundBtn.texture = tileset['audioOff.png'];
         }
     });
+    soundBtn.width = soundBtn.height = 50;
+    soundBtn.tint = 0x000000;
+    soundBtn.position.set(app.screen.width - 70, 20);
 
-    app.stage.addChild(sky, ground, bushes, bunneyCnt, linksCnt, title);
+    app.stage.addChild(sky, ground, bushes, bunneyCnt, linksCnt, soundBtn, title);
 
     // game loop
     app.ticker.add((delta) => {
