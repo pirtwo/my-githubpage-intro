@@ -25,6 +25,20 @@ export function getRandomElement(arr = []) {
     return arr[math.randInt(0, arr.length - 1)];
 }
 
+export function loadFrames({
+    tileset,
+    name,
+    format,
+    frames = []
+}) {
+    let animFrames = [];
+
+    for (const frame of frames) {
+        animFrames.push(tileset[`${name}${frame}.${format}`]);
+    }
+    return animFrames;
+}
+
 function makeCancelable(promise) {
     let canceled = false;
     const wrapperPromise = new Promise((resolve, reject) => {
