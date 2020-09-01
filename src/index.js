@@ -10,6 +10,7 @@ import {
     loadFrames
 } from "./lib/utils";
 import Bunney from "./bunney";
+import SplashScreen from "./splash";
 
 const app = new PIXI.Application({
     width: 1024,
@@ -18,15 +19,27 @@ const app = new PIXI.Application({
     backgroundColor: 0x1099bb
 });
 
+let splashScreen;
+
 loadFonts(["Press Start 2P"], init);
 
 function init() {
     document.body.appendChild(app.view);
     scale(app.view);
+    window.focus();
     window.addEventListener('resize', () => scale(app.view));
 
-    app.loader.onProgress.add(p => {
-        console.log(p);
+    splashScreen = new SplashScreen({
+        app: app,
+        width: app.screen.width,
+        height: app.screen.height
+    });
+
+    app.stage.addChild(splashScreen);
+
+    app.loader.onProgress.add(e => {
+        console.log(e)
+        splashScreen.progress.text = `Loading ${e.progress}%`
     });
     app.loader
         .add('music', './assets/sounds/music.mp3')
@@ -78,6 +91,7 @@ function setup(loader, resources) {
     }
     bushes.position.set(0, ground.y - bushes.height);
 
+    const familyMembers = 3;
     let bunnies = [];
     let bunneyCnt = new PIXI.Container();
     let frames = loadFrames({
@@ -86,18 +100,20 @@ function setup(loader, resources) {
         format: 'png',
         frames: ['00', '01', '02', '03', '04', '05', '06', '07']
     });
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < familyMembers; i++) {
         const bunney = new Bunney({
-            speed: 4,
+            speed: 1,
             frames: frames
         });
-        bunney.sprite.width = bunney.sprite.height = 150;
-        bunney.sprite.position.set(randInt(50, app.screen.width - 50), 0);
+        bunney.sprite.width = bunney.sprite.height = randInt(100, 150);
+        bunney.speed = Math.floor(bunney.sprite.height / 150 * 5);
+        bunney.sprite.position.set(randInt(50, app.screen.width - 50), 155 - bunney.sprite.height);
         bunney.lookRight();
         bunnies.push(bunney);
         bunneyCnt.addChild(bunney.sprite);
-    }
-    bunneyCnt.position.set(0, 540);
+    }    
+    bunneyCnt.position.set(0, 535);
+
     // animating the bunnies here
     setInterval(() => {
         for (let i = 0; i < bunnies.length; i++) {
@@ -160,20 +176,23 @@ function setup(loader, resources) {
     let soundBtn = new PIXI.Sprite(tileset['audioOn.png']);
     soundBtn.buttonMode = true;
     soundBtn.interactive = true;
-    soundBtn.on("pointerdown", e => {
-        if (isMuted) {
-            isMuted = false;
-            Sound.unmuteAll();
-            soundBtn.texture = tileset['audioOn.png'];
-        } else {
-            isMuted = true;
-            Sound.muteAll();
-            soundBtn.texture = tileset['audioOff.png'];
-        }
-    });
     soundBtn.width = soundBtn.height = 50;
     soundBtn.tint = 0x000000;
     soundBtn.position.set(app.screen.width - 70, 20);
+    soundBtn.on("pointerdown", e => {
+        if (isMuted) {            
+            Sound.unmuteAll();
+            soundBtn.texture = tileset['audioOn.png'];
+        } else {            
+            Sound.muteAll();
+            soundBtn.texture = tileset['audioOff.png'];
+        }
+        isMuted = !isMuted;
+    });
+    
+    splashScreen.hide();
+    splashScreen.ticker.destroy();
+    app.stage.removeChild(splashScreen);
 
     app.stage.addChild(sky, ground, bushes, bunneyCnt, linksCnt, soundBtn, title);
 
