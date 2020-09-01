@@ -6,7 +6,6 @@ export default class Bunney {
         frames = []
     }) {
         this.speed = speed;
-        this.frames = frames;
         this.state = 'lookLeft';
         this.sprite = new PIXI.AnimatedSprite(frames);
         this.sprite.animationSpeed = 0.15;
