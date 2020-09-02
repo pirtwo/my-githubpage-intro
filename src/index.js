@@ -2,15 +2,17 @@ import * as PIXI from "pixi.js";
 import Sound from "pixi-sound";
 import Stats from "stats.js";
 import scale from "./lib/scale";
+import Particle from "./lib/particle";
 import loadFonts from "./lib/webfont";
+import Bunney from "./bunney";
+import SplashScreen from "./splash";
 import {
     randInt
 } from "./lib/math";
 import {
     loadFrames
 } from "./lib/utils";
-import Bunney from "./bunney";
-import SplashScreen from "./splash";
+
 
 const app = new PIXI.Application({
     width: 1024,
@@ -26,7 +28,6 @@ loadFonts(["Press Start 2P"], init);
 function init() {
     document.body.appendChild(app.view);
     scale(app.view);
-    window.focus();
     window.addEventListener('resize', () => scale(app.view));
 
     splashScreen = new SplashScreen({
@@ -53,7 +54,7 @@ function setup(loader, resources) {
     document.body.appendChild(stats.dom);
 
     let isMuted = false;
-    let ctx = new PIXI.Graphics();
+    const particle = new Particle();
     const tileset = resources.tileset.textures;
     const music = resources.music.sound;
 
@@ -64,57 +65,38 @@ function setup(loader, resources) {
         music.pause();
     });
     window.addEventListener("focus", () => {
-        music.play();
+        if (!music.isPlaying)
+            music.resume();
     });
 
-    let sky = new PIXI.TilingSprite(tileset['sprite_16.png'], app.screen.width, app.screen.height);
+    let sky = createSky(tileset['sprite_16.png']);
 
-    let title = new PIXI.Text("WELCOME\nPirtwo Github Page", new PIXI.TextStyle({
-        fontSize: 35,
-        fontFamily: 'Press Start 2P',
-        lineHeight: 50,
-        align: 'center'
-    }));
+    let sun = createSun(70, particle);
+    sun.position.set(100, 100);
+
+    let title = createTitle("WELCOME\nPirtwo Github Page");
     title.anchor.set(0.5);
     title.position.set(app.screen.width / 2, 100);
 
-    let ground = new PIXI.TilingSprite(tileset['sprite_09.png'], 1024, 100);
+    let ground = createGround(tileset['sprite_09.png']);
     ground.tileScale.set(0.7);
     ground.position.set(0, app.screen.height - ground.height);
 
-    let bushes = new PIXI.Container();
-    for (let i = 0; i < 20; i++) {
-        let bush = new PIXI.Sprite(tileset['sprite_17.png']);
-        bush.width = bush.height = randInt(20, 50);
-        bush.position.set(randInt(30, app.screen.width - 30), 50 - bush.height);
-        bushes.addChild(bush);
-    }
-    bushes.position.set(0, ground.y - bushes.height);
+    let plantsCnt = createPlants(15, tileset['sprite_17.png']);
+    plantsCnt.position.set(0, ground.y - plantsCnt.height);
 
-    const familyMembers = 3;
-    let bunnies = [];
-    let bunneyCnt = new PIXI.Container();
     let frames = loadFrames({
         tileset: tileset,
         name: 'sprite_',
         format: 'png',
         frames: ['00', '01', '02', '03', '04', '05', '06', '07']
     });
-    for (let i = 0; i < familyMembers; i++) {
-        const bunney = new Bunney({
-            speed: 1,
-            frames: frames
-        });
-        bunney.sprite.width = bunney.sprite.height = randInt(100, 150);
-        bunney.speed = Math.floor(bunney.sprite.height / 150 * 5);
-        bunney.sprite.position.set(randInt(50, app.screen.width - 50), 155 - bunney.sprite.height);
-        bunney.lookRight();
-        bunnies.push(bunney);
-        bunneyCnt.addChild(bunney.sprite);
-    }    
-    bunneyCnt.position.set(0, 535);
+    let {
+        bunnies,
+        bunniesCnt
+    } = createBunnies(randInt(2, 3), frames);
 
-    // animating the bunnies here
+    bunniesCnt.position.set(0, 535);
     setInterval(() => {
         for (let i = 0; i < bunnies.length; i++) {
             const bunney = bunnies[i];
@@ -132,8 +114,8 @@ function setup(loader, resources) {
         }
     }, 2000);
 
-    let linkList = [{
-            title: '8Puzzle',
+    let linksCnt = createLinks([{
+            title: 'Sliding Puzzle',
             url: 'https://pirtwo.github.io/8puzzle/index.html'
         },
         {
@@ -144,57 +126,27 @@ function setup(loader, resources) {
             title: 'Rabbit Sweeper',
             url: 'https://pirtwo.github.io/rabbitsweeper/index.html'
         }
-    ];
-    let linksCnt = new PIXI.Container();
-    ctx.beginFill(0xffffff);
-    ctx.drawRoundedRect(0, 0, 150, 150, 10);
-    ctx.endFill();
-    for (let i = 0; i < linkList.length; i++) {
-        let link = new PIXI.Container();
-        let bg = new PIXI.Sprite(app.renderer.generateTexture(ctx));
-        let text = new PIXI.Text(linkList[i].title, new PIXI.TextStyle({
-            fontSize: 17,
-            align: 'center',
-            fontFamily: 'Press Start 2P',
-            wordWrap: true
-        }));
-        text.anchor.set(0.5);
-        text.position.set(bg.width / 2, bg.height / 2);
-
-        link.addChild(bg, text);
-        link.position.set(i * (link.width + 50), 0);
-        linksCnt.addChild(link);
-
-        link.interactive = true;
-        link.buttonMode = true;
-        link.on("pointerdown", e => {
-            window.location.assign(linkList[i].url);
-        });
-    }
+    ]);
     linksCnt.position.set(app.screen.width / 2 - linksCnt.width / 2, 220);
 
-    let soundBtn = new PIXI.Sprite(tileset['audioOn.png']);
-    soundBtn.buttonMode = true;
-    soundBtn.interactive = true;
-    soundBtn.width = soundBtn.height = 50;
-    soundBtn.tint = 0x000000;
+    let soundBtn = createSoundBtn(tileset['audioOn.png']);
     soundBtn.position.set(app.screen.width - 70, 20);
     soundBtn.on("pointerdown", e => {
-        if (isMuted) {            
+        if (isMuted) {
             Sound.unmuteAll();
             soundBtn.texture = tileset['audioOn.png'];
-        } else {            
+        } else {
             Sound.muteAll();
             soundBtn.texture = tileset['audioOff.png'];
         }
         isMuted = !isMuted;
     });
-    
+
     splashScreen.hide();
     splashScreen.ticker.destroy();
     app.stage.removeChild(splashScreen);
 
-    app.stage.addChild(sky, ground, bushes, bunneyCnt, linksCnt, soundBtn, title);
+    app.stage.addChild(sky, sun, title, ground, plantsCnt, bunniesCnt, linksCnt, soundBtn);
 
     // game loop
     app.ticker.add((delta) => {
@@ -212,6 +164,175 @@ function setup(loader, resources) {
             bunney.update();
         }
 
+        particle.update(delta);
+
         stats.end();
     });
+}
+
+function createTitle(text) {
+    return new PIXI.Text(text, new PIXI.TextStyle({
+        fontSize: 27,
+        fontFamily: 'Press Start 2P',
+        lineHeight: 50,
+        align: 'center',
+        fontWeight: 'bold'
+    }));
+}
+
+function createSky(texture) {
+    return new PIXI.TilingSprite(texture, app.screen.width, app.screen.height);
+}
+
+function createSun(radius, particle) {
+    let ctx;
+    let cnt = new PIXI.Container();
+
+    ctx = new PIXI.Graphics();
+    ctx.beginFill(0xffeb3b);
+    ctx.drawCircle(0, 0, radius);
+    ctx.endFill();
+    let sun = new PIXI.Sprite(app.renderer.generateTexture(ctx));
+
+    ctx = new PIXI.Graphics();
+    ctx.beginFill(0xffeb3b);
+    ctx.drawRect(0, 0, 10, 10);
+    ctx.endFill();
+    let sunrayTexture = app.renderer.generateTexture(ctx);
+    let sunrays = new PIXI.ParticleContainer(1500, {
+        uvs: true,
+        alpha: true,
+        scale: true,
+        rotation: true,
+    });
+    sunrays.position.set(sun.width / 2, sun.height / 2);
+
+    let emmiter = particle.emitter({
+        x: 0,
+        y: 0,
+        number: 20,
+        minSpeed: 0.5,
+        maxSpeed: 2,
+        minFadeSpeed: 0.01,
+        maxFadeSpeed: 0.01,
+        gravity: 0,
+        container: sunrays,
+        sprite: () => {
+            let sp = new PIXI.Sprite(sunrayTexture);
+            sp.anchor.set(0.5);
+            return sp;
+        }
+    }, 1000);
+
+    emmiter.start();
+
+    cnt.addChild(sun, sunrays);
+    return cnt;
+}
+
+function createGround(texture) {
+    return new PIXI.TilingSprite(texture, 1024, 100);
+}
+
+function createPlants(number, texture) {
+    let plants = new PIXI.Container();
+    for (let i = 0; i < number; i++) {
+        let plant = new PIXI.Sprite(texture);
+        plant.width = plant.height = randInt(20, 50);
+        plant.position.set(randInt(30, app.screen.width - 30), 50 - plant.height);
+        plants.addChild(plant);
+    }
+    return plants;
+}
+
+function createBunnies(number, frames) {
+    let bunnies = [];
+    let bunniesCnt = new PIXI.Container();
+
+    for (let i = 0; i < number; i++) {
+        const bunney = new Bunney({
+            speed: 1,
+            frames: frames
+        });
+        bunney.sprite.width = bunney.sprite.height = randInt(100, 150);
+        bunney.speed = Math.floor(bunney.sprite.height / 150 * 5);
+        bunney.sprite.position.set(randInt(50, app.screen.width - 50), 155 - bunney.sprite.height);
+        bunney.lookRight();
+        bunnies.push(bunney);
+        bunniesCnt.addChild(bunney.sprite);
+    }
+
+    return {
+        bunnies,
+        bunniesCnt
+    }
+}
+
+function createLinks(list) {
+    let ctx = new PIXI.Graphics();
+    let cnt = new PIXI.Container();
+
+    ctx.beginFill(0xf5f5f5);
+    ctx.lineStyle(3, 0xe5e5e5);
+    ctx.drawRoundedRect(0, 0, 150, 150, 10);
+    ctx.endFill();
+    let texture = app.renderer.generateTexture(ctx);
+
+    for (let i = 0; i < list.length; i++) {
+        let link = new PIXI.Container();
+        let linkBg = new PIXI.Sprite(texture);
+        let text = new PIXI.Text(list[i].title, new PIXI.TextStyle({
+            fill: 0x000000,
+            align: 'center',
+            fontSize: 17,
+            fontFamily: 'Press Start 2P',
+            wordWrap: true,
+            lineHeight: 25
+        }));
+        text.anchor.set(0.5);
+        text.position.set(linkBg.width / 2, linkBg.height / 2);
+
+        link.addChild(linkBg, text);
+        link.position.set(i * (link.width + 50), 0);
+        cnt.addChild(link);
+
+        link.interactive = true;
+        link.buttonMode = true;
+        link.on("pointerdown", () => {
+            window.location.assign(linkList[i].url);
+        });
+        link.on("pointerover", () => {
+            linkBg.tint = 0xba68c8;
+            text.style = new PIXI.TextStyle({
+                fill: 0xffffff,
+                align: 'center',
+                fontSize: 17,
+                fontFamily: 'Press Start 2P',
+                wordWrap: true,
+                lineHeight: 25
+            });
+        });
+        link.on("pointerout", () => {
+            linkBg.tint = 0xffffff;
+            text.style = new PIXI.TextStyle({
+                fill: 0x000000,
+                align: 'center',
+                fontSize: 17,
+                fontFamily: 'Press Start 2P',
+                wordWrap: true,
+                lineHeight: 25
+            });
+        });
+    }
+
+    return cnt;
+}
+
+function createSoundBtn(onTexture) {
+    let soundBtn = new PIXI.Sprite(onTexture);
+    soundBtn.buttonMode = true;
+    soundBtn.interactive = true;
+    soundBtn.width = soundBtn.height = 50;
+    soundBtn.tint = 0x000000;
+    return soundBtn;
 }
