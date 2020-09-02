@@ -288,7 +288,7 @@ function createLinks(list) {
         link.interactive = true;
         link.buttonMode = true;
         link.on("pointerdown", () => {
-            window.location.assign(linkList[i].url);
+            window.location.assign(list[i].url);
         });
         link.on("pointerover", () => {
             linkBg.tint = 0xba68c8;
