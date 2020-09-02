@@ -1,6 +1,5 @@
 import * as PIXI from "pixi.js";
 import Sound from "pixi-sound";
-import Stats from "stats.js";
 import scale from "./lib/scale";
 import Particle from "./lib/particle";
 import loadFonts from "./lib/webfont";
@@ -39,7 +38,6 @@ function init() {
     app.stage.addChild(splashScreen);
 
     app.loader.onProgress.add(e => {
-        console.log(e)
         splashScreen.progress.text = `Loading ${e.progress}%`
     });
     app.loader
@@ -48,11 +46,7 @@ function init() {
         .load(setup);
 }
 
-function setup(loader, resources) {
-    let stats = new Stats();
-    stats.showPanel(0);
-    document.body.appendChild(stats.dom);
-
+function setup(loader, resources) { 
     let isMuted = false;
     const particle = new Particle();
     const tileset = resources.tileset.textures;
@@ -149,10 +143,7 @@ function setup(loader, resources) {
     app.stage.addChild(sky, sun, title, ground, plantsCnt, bunniesCnt, linksCnt, soundBtn);
 
     // game loop
-    app.ticker.add((delta) => {
-        stats.begin();
-
-        // update game here
+    app.ticker.add((delta) => {       
         sky.tilePosition.x += 0.2;
 
         for (let i = 0; i < bunnies.length; i++) {
@@ -165,8 +156,6 @@ function setup(loader, resources) {
         }
 
         particle.update(delta);
-
-        stats.end();
     });
 }
 
